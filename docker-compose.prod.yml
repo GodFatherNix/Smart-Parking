@@ -1,0 +1,143 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: smartpark-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-smartpark}
+      POSTGRES_USER: ${POSTGRES_USER:-smartpark}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-smartpark} -d ${POSTGRES_DB:-smartpark}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  postgres-backup:
+    image: prodrigestivill/postgres-backup-local:16
+    container_name: smartpark-postgres-backup
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-smartpark}
+      POSTGRES_USER: ${POSTGRES_USER:-smartpark}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      SCHEDULE: ${POSTGRES_BACKUP_SCHEDULE:-@daily}
+      BACKUP_KEEP_DAYS: ${POSTGRES_BACKUP_KEEP_DAYS:-7}
+      BACKUP_KEEP_WEEKS: ${POSTGRES_BACKUP_KEEP_WEEKS:-4}
+      BACKUP_KEEP_MONTHS: ${POSTGRES_BACKUP_KEEP_MONTHS:-6}
+      BACKUP_DIR: /backups
+    volumes:
+      - postgres_backups:/backups
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: smartpark-backend-prod
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-smartpark}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-smartpark}
+      DATABASE_ECHO: "False"
+      LOG_LEVEL: ${BACKEND_LOG_LEVEL:-INFO}
+      LOG_FORMAT: json
+      LOG_FILE: /var/log/smartpark/backend/backend.log
+      SENTRY_DSN: ${BACKEND_SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: production
+      SENTRY_TRACES_SAMPLE_RATE: ${BACKEND_SENTRY_TRACES_SAMPLE_RATE:-0.1}
+      MONITORING_HISTORY_SIZE: "300"
+      MONITORING_ERROR_RATE_THRESHOLD: "0.1"
+      MONITORING_LATENCY_MS_THRESHOLD: "500"
+      MONITORING_LOW_AVAILABILITY_THRESHOLD: "5"
+      API_KEYS: ${API_KEYS:-change-me}
+      API_KEY_HEADER: X-API-Key
+      API_RATE_LIMIT: ${API_RATE_LIMIT:-2000}
+      API_RATE_LIMIT_WINDOW_SECONDS: ${API_RATE_LIMIT_WINDOW_SECONDS:-60}
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-https://example.com}
+      CORS_ALLOW_METHODS: GET,POST,PUT,PATCH,DELETE,OPTIONS
+      CORS_ALLOW_HEADERS: '*'
+    volumes:
+      - backend_logs:/var/log/smartpark/backend
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api
+        VITE_API_KEY: ${API_KEYS:-change-me}
+        VITE_API_KEY_HEADER: X-API-Key
+    container_name: smartpark-frontend-prod
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3000:80"
+
+  vision:
+    build:
+      context: ./vision
+      dockerfile: Dockerfile
+    container_name: smartpark-vision-prod
+    profiles: ["vision"]
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      BACKEND_API_URL: http://backend:8000
+      BACKEND_EVENT_ENDPOINT: /event
+      CAMERA_CONFIG_PATH: /app/config/cameras.json
+      LOG_LEVEL: ${VISION_LOG_LEVEL:-INFO}
+      LOG_FILE: /var/log/smartpark/vision/vision.log
+      LOG_FORMAT: json
+      SENTRY_DSN: ${VISION_SENTRY_DSN:-}
+      EVENT_LOCAL_LOG_PATH: /app/logs/events_local.jsonl
+      EVENT_QUEUE_PATH: /app/logs/events_queue.jsonl
+      MONITOR_DASHBOARD_PATH: /app/logs/monitoring_dashboard.json
+      VIDEO_INPUT_TYPE: file
+      VIDEO_INPUT_PATH: /app/data/sample_video.mp4
+    volumes:
+      - ./vision/config:/app/config:ro
+      - ./vision/data:/app/data
+      - ./vision/logs:/app/logs
+      - vision_model_cache:/root/.cache/ultralytics
+      - vision_logs:/var/log/smartpark/vision
+
+  log-collector:
+    image: fluent/fluent-bit:2.2
+    container_name: smartpark-log-collector
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    volumes:
+      - ./ops/logging/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - backend_logs:/logs/backend:ro
+      - vision_logs:/logs/vision:ro
+      - aggregated_logs:/aggregated
+
+volumes:
+  postgres_data:
+  postgres_backups:
+  backend_logs:
+  vision_logs:
+  aggregated_logs:
+  vision_model_cache:

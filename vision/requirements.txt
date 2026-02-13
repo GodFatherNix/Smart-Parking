@@ -1,0 +1,32 @@
+# Vision Service Dependencies
+
+# Core ML/Computer Vision
+ultralytics==8.0.235          # YOLOv8
+opencv-python==4.8.1.78       # OpenCV for image processing
+torch==2.1.2                  # PyTorch (YOLOv8 backend)
+torchvision==0.16.2           # PyTorch vision utilities
+
+# Tracking
+supervision==0.18.0           # ByteTrack and detection utilities
+
+# API & HTTP
+requests==2.31.0              # HTTP requests
+aiohttp==3.9.1                # Async HTTP client
+
+# Configuration & Environment
+python-dotenv==1.0.0          # Environment variable management
+pydantic==2.5.0               # Data validation
+
+# Utilities
+numpy==1.24.3                 # Numerical computing
+Pillow==10.1.0                # Image processing
+pyyaml==6.0.1                 # YAML parsing
+
+# Logging
+python-json-logger==2.0.7     # JSON logging
+sentry-sdk==2.13.0            # Error tracking
+
+# Development
+pytest==7.4.3                 # Testing framework
+black==23.12.0                # Code formatter
+flake8==6.1.0                 # Linting

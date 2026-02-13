@@ -1,0 +1,68 @@
+[
+  {
+    "camera_id": "cam_001",
+    "floor_id": 1,
+    "name": "Ground Floor - Entry",
+    "description": "Main entry/exit at ground floor",
+    "video_source": "rtsp://camera_ip:554/stream",
+    "video_type": "rtsp",
+    "enabled": true,
+    "line_crossing_points": [
+      [0, 360],
+      [1280, 360]
+    ],
+    "direction_mapping": {
+      "up": "entry",
+      "down": "exit"
+    },
+    "calibration": {
+      "reference_object_width_pixels": 100,
+      "reference_object_width_meters": 1.0,
+      "pixels_per_meter": 100
+    }
+  },
+  {
+    "camera_id": "cam_002",
+    "floor_id": 2,
+    "name": "First Floor - Entry",
+    "description": "Entry/exit at first floor",
+    "video_source": "rtsp://camera_ip:554/stream2",
+    "video_type": "rtsp",
+    "enabled": false,
+    "line_crossing_points": [
+      [0, 360],
+      [1280, 360]
+    ],
+    "direction_mapping": {
+      "up": "entry",
+      "down": "exit"
+    },
+    "calibration": {
+      "reference_object_width_pixels": 100,
+      "reference_object_width_meters": 1.0,
+      "pixels_per_meter": 100
+    }
+  },
+  {
+    "camera_id": "cam_003",
+    "floor_id": 3,
+    "name": "Second Floor - Entry",
+    "description": "Entry/exit at second floor",
+    "video_source": "rtsp://camera_ip:554/stream3",
+    "video_type": "rtsp",
+    "enabled": false,
+    "line_crossing_points": [
+      [0, 360],
+      [1280, 360]
+    ],
+    "direction_mapping": {
+      "up": "entry",
+      "down": "exit"
+    },
+    "calibration": {
+      "reference_object_width_pixels": 100,
+      "reference_object_width_meters": 1.0,
+      "pixels_per_meter": 100
+    }
+  }
+]
